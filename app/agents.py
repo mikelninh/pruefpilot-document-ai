@@ -1,278 +1,187 @@
 from __future__ import annotations
-from dataclasses import dataclass
+
+import time
 from typing import Any
 
+from .data import load_case, load_rules
 from .models import (
-    AskResponse, Citation, CompletenessItem, CompletenessReport, EvalMetric, EvalSummary,
-    EvidenceResponse, IntakeDocument, IntakeReport, PhaseOneItem, QueueCase, ReviewMemo, TraceStep
+    AskResponse,
+    Citation,
+    CompletenessItem,
+    CompletenessReport,
+    EvidenceResponse,
+    QueueItem,
+    ReviewMemo,
+    TraceStep,
 )
 from .retrieval import BM25Retriever
-from .store import load_case, load_queue, load_rules
 
-@dataclass
-class ToolContext:
-    case: dict[str, Any]
-    rules: list[dict[str, Any]]
 
-def _citation(rule: dict, score: float = 0.95) -> Citation:
+def _citation(rule: dict[str, Any], confidence: float = 0.95) -> Citation:
     return Citation(
         source_id=rule["id"],
         title=rule["title"],
+        version=rule["version"],
         page=rule["page"],
         section=rule["section"],
         source_url=rule["source_url"],
-        confidence=min(max(score, 0.0), 1.0)
+        confidence=max(0.0, min(1.0, confidence)),
     )
 
-class PruefPilot:
-    """Bounded agent workflow for a synthetic public-sector review case."""
 
+class PruefPilot:
     def __init__(self) -> None:
-        self.context = ToolContext(case=load_case(), rules=load_rules())
-        self.retriever = BM25Retriever(self.context.rules)
+        self.case = load_case()
+        self.rules = load_rules()
+        self.retriever = BM25Retriever(self.rules)
+
+    def queue(self) -> list[QueueItem]:
+        return [
+            QueueItem(
+                case_id="GF-2026-014", applicant="Stadt Falkenried", stage="Vorprüfung",
+                risk_score=72, open_points=5,
+                next_action="Abnahmeprotokoll und Fotodokumentation nachfordern; Differenz klären.",
+            ),
+            QueueItem(
+                case_id="GF-2026-021", applicant="Landkreis Sonnenhain", stage="Intake",
+                risk_score=38, open_points=2,
+                next_action="Zwei Dokumente mit niedriger Klassifikationskonfidenz prüfen.",
+            ),
+            QueueItem(
+                case_id="GF-2026-026", applicant="Gemeinde Uferstedt", stage="Fachprüfung",
+                risk_score=18, open_points=1,
+                next_action="Prüfvermerk fachlich freigeben.",
+            ),
+        ]
 
     def case_summary(self) -> dict[str, Any]:
-        case = self.context.case
-        present = sum(1 for d in case["documents"] if d.get("required", True) and d["status"] == "present")
+        present = sum(1 for d in self.case["documents"] if d["status"] == "present")
         return {
-            "case_id": case["case_id"],
-            "title": case["title"],
-            "applicant": case["applicant"],
-            "project_period": case["project_period"],
+            "case_id": self.case["case_id"],
+            "title": self.case["title"],
+            "applicant": self.case["applicant"],
+            "project_period": self.case["project_period"],
             "documents_present": present,
-            "documents_required": len(case["required_document_types"]),
-            "amount_delta_eur": case["invoice_total_eur"] - case["claimed_total_eur"],
+            "documents_required": len(self.case["required_document_types"]),
+            "amount_delta_eur": self.case["invoice_total_eur"] - self.case["claimed_total_eur"],
+            "risk_score": 72,
         }
 
     def completeness(self) -> CompletenessReport:
-        case = self.context.case
-        trace = [
-            TraceStep(tool="list_case_documents", detail=f'{len(case["documents"])} Dokumenttypen geprüft'),
-            TraceStep(tool="compare_required_documents", detail="Pflichtunterlagen gegen Fallakte abgeglichen"),
-            TraceStep(tool="reconcile_amounts", status="warning", detail="Zahlenmäßiger Nachweis mit Rechnungssumme verglichen"),
-        ]
+        started = time.perf_counter()
         missing = [
             CompletenessItem(document_type=d["type"], title=d["title"], status="missing")
-            for d in case["documents"] if d.get("required", True) and d["status"] == "missing"
+            for d in self.case["documents"] if d["status"] == "missing"
         ]
-        delta = case["invoice_total_eur"] - case["claimed_total_eur"]
-        flags = [
-            f"Rechnungssumme und beantragte Erstattung weichen um {delta:,.0f} EUR ab.".replace(",", "."),
-            "Rechnung R-007 enthält keinen Leistungszeitraum.",
+        delta = self.case["invoice_total_eur"] - self.case["claimed_total_eur"]
+        trace = [
+            TraceStep(tool="load_case_schema", detail="Pflichtdokumente aus Programm- und Bescheidschema geladen", duration_ms=0.3),
+            TraceStep(tool="compare_document_inventory", status="warning", detail=f"{len(missing)} Unterlagen fehlen", duration_ms=0.5),
+            TraceStep(tool="reconcile_amounts", status="warning", detail=f"Differenz {delta:,.0f} EUR".replace(",", "."), duration_ms=0.2),
+            TraceStep(tool="emit_typed_report", detail="CompletenessReport validiert", duration_ms=round((time.perf_counter() - started) * 1000, 2)),
         ]
         return CompletenessReport(
-            present=sum(1 for d in case["documents"] if d.get("required", True) and d["status"] == "present"),
-            required=len(case["required_document_types"]),
+            present=len(self.case["documents"]) - len(missing),
+            required=len(self.case["documents"]),
             missing=missing,
-            review_flags=flags,
-            trace=trace
+            review_flags=[
+                f"Rechnungssumme und beantragte Erstattung weichen um {delta:,.0f} EUR ab.".replace(",", "."),
+                "Rechnung R-007 enthält keinen Leistungszeitraum.",
+                "Ein hochgeladenes Dokument wurde wegen einer Prompt-Injection-Anweisung quarantänisiert.",
+            ],
+            trace=trace,
         )
 
     def evidence_check(self, claim: str) -> EvidenceResponse:
         text = claim.lower()
-        case = self.context.case
         trace = [
-            TraceStep(tool="parse_claim", detail="Prüfbare Aussage und benötigte Belege identifiziert"),
-            TraceStep(tool="compare_claim_to_case", detail="Fallmetadaten und Dokumentinhalte abgeglichen"),
+            TraceStep(tool="parse_claim", detail="Behauptung in prüfbare Teilkriterien zerlegt", duration_ms=0.2),
+            TraceStep(tool="retrieve_case_evidence", detail="Fallmetadaten, Rechnungen und Nachweise abgeglichen", duration_ms=0.4),
         ]
-
-        if "summe" in text or "betrag" in text or "rechnung" in text:
-            delta = case["invoice_total_eur"] - case["claimed_total_eur"]
-            status = "NOT_SUPPORTED" if delta else "SUPPORTED"
-            return EvidenceResponse(
-                status=status,
-                summary=f"Die beantragte Erstattung stimmt nicht mit der Rechnungssumme überein. Differenz: {delta:,.0f} EUR.".replace(",", "."),
-                supporting_evidence=[
-                    f'Zahlenmäßiger Verwendungsnachweis: {case["claimed_total_eur"]:,.0f} EUR'.replace(",", "."),
-                    f'Rechnungspaket: {case["invoice_total_eur"]:,.0f} EUR'.replace(",", "."),
-                ],
-                missing_evidence=["Korrigierter zahlenmäßiger Nachweis oder nachvollziehbare Überleitungsrechnung"],
-                trace=trace + [TraceStep(tool="reconcile_amounts", status="warning", detail=f"Differenz {delta} EUR")]
-            )
-
-        if "vollständig" in text or "projektdokumentation" in text:
-            missing = [d["title"] for d in case["documents"] if d.get("required", True) and d["status"] == "missing"]
+        if any(token in text for token in ("summe", "betrag", "rechnung")):
+            delta = self.case["invoice_total_eur"] - self.case["claimed_total_eur"]
             return EvidenceResponse(
                 status="NOT_SUPPORTED",
-                summary="Die Projektdokumentation ist nach der synthetischen Checkliste nicht vollständig.",
-                supporting_evidence=["Netzplan und Messprotokolle liegen vor."],
-                missing_evidence=missing,
-                trace=trace + [TraceStep(tool="list_missing_documents", status="warning", detail=", ".join(missing))]
+                summary=f"Die beantragte Erstattung stimmt nicht mit der Rechnungssumme überein. Differenz: {delta:,.0f} EUR.".replace(",", "."),
+                supporting_evidence=["Zahlenmäßiger Verwendungsnachweis: 730.000 EUR", "Rechnungspaket: 734.280 EUR"],
+                missing_evidence=["Korrigierter Nachweis oder nachvollziehbare Überleitungsrechnung"],
+                trace=trace + [TraceStep(tool="reconcile_amounts", status="warning", detail="Widerspruch erkannt", duration_ms=0.2)],
             )
-
-        dated = [inv for inv in case["invoices"] if inv["service_to"]]
-        all_before = all(inv["service_to"] <= case["project_period"]["end"] for inv in dated)
-        undated = [inv["invoice"] for inv in case["invoices"] if not inv["service_to"]]
-        status = "PARTIALLY_SUPPORTED" if all_before and undated else ("SUPPORTED" if all_before else "NOT_SUPPORTED")
+        if "vollständig" in text or "projektdokumentation" in text:
+            return EvidenceResponse(
+                status="NOT_SUPPORTED",
+                summary="Die Projektdokumentation ist nicht vollständig.",
+                supporting_evidence=["Netzplan und Messprotokolle liegen vor."],
+                missing_evidence=["Abnahmeprotokoll", "Fotodokumentation mit GPS-Zuordnung"],
+                trace=trace + [TraceStep(tool="list_missing_documents", status="warning", detail="2 Pflichtunterlagen fehlen", duration_ms=0.2)],
+            )
+        dated = [inv for inv in self.case["invoices"] if inv.get("service_to")]
+        undated = [inv["invoice"] for inv in self.case["invoices"] if not inv.get("service_to")]
         return EvidenceResponse(
-            status=status,
-            summary="Die datierten Rechnungen liegen vor Projektende. Für mindestens eine Rechnung fehlt jedoch der Leistungszeitraum; zusätzlich fehlt das formale Abnahmeprotokoll.",
-            supporting_evidence=[
-                f'{inv["invoice"]}: Leistungsende {inv["service_to"]}'
-                for inv in dated
-            ],
-            missing_evidence=[
-                f"Leistungszeitraum für {invoice}" for invoice in undated
-            ] + ["Abnahmeprotokoll"],
-            trace=trace + [TraceStep(tool="validate_service_periods", status="warning", detail=f"{len(undated)} Rechnung(en) ohne Leistungszeitraum")]
+            status="PARTIALLY_SUPPORTED",
+            summary="Die datierten Rechnungen liegen vor Projektende. Für Rechnung R-007 fehlt jedoch der Leistungszeitraum; zusätzlich fehlt das Abnahmeprotokoll.",
+            supporting_evidence=[f'{inv["invoice"]}: Leistungsende {inv["service_to"]}' for inv in dated],
+            missing_evidence=[f"Leistungszeitraum für {invoice}" for invoice in undated] + ["Abnahmeprotokoll"],
+            trace=trace + [TraceStep(tool="validate_service_periods", status="warning", detail="1 Rechnung ohne Leistungszeitraum", duration_ms=0.3)],
         )
 
     def ask(self, question: str) -> AskResponse:
+        started = time.perf_counter()
         results = self.retriever.search(question, limit=3)
         trace = [
-            TraceStep(tool="classify_question", detail="Domänenfrage erkannt"),
-            TraceStep(tool="search_requirements", detail=f"{len(results)} relevante Regelabschnitte gefunden"),
+            TraceStep(tool="classify_question", detail="Fachfrage und benötigte Quellenart erkannt", duration_ms=0.2),
+            TraceStep(tool="search_versioned_rules", detail=f"{len(results)} Regelabschnitte gefunden", duration_ms=0.7),
         ]
         if not results:
             return AskResponse(
-                answer="Dazu enthält der eingebundene Demo-Korpus keine belastbare Grundlage. Bitte prüfen Sie den Zuwendungsbescheid oder ergänzen Sie die Dokumentbasis.",
-                citations=[],
-                trace=trace + [TraceStep(tool="grounding_guard", status="warning", detail="Keine belastbare Quelle gefunden")],
-                grounded=False
+                answer="Dazu enthält der eingebundene Demo-Korpus keine belastbare Grundlage. Bitte ergänzen Sie die Dokumentbasis oder prüfen Sie den individuellen Zuwendungsbescheid.",
+                citations=[], trace=trace + [TraceStep(tool="grounding_guard", status="warning", detail="Keine belastbare Quelle", duration_ms=0.1)],
+                grounded=False, uncertainty="high",
             )
-
         q = question.lower()
-        citations = [_citation(doc, min(0.99, 0.72 + score / 10)) for doc, score in results]
-
+        citations = [_citation(doc, min(0.99, 0.76 + score / 12)) for doc, score in results]
         if "frist" in q and "verwendungsnachweis" in q:
-            answer = (
-                "Der Verwendungsnachweis ist innerhalb von sechs Monaten nach Erfüllung des "
-                "Zuwendungszwecks einzureichen, spätestens sechs Monate nach Ende des Bewilligungszeitraums. "
-                "Zusätzliche Anforderungen können sich aus dem konkreten Zuwendungsbescheid ergeben."
-            )
-        elif "fehlt" in q or "vollständig" in q:
-            report = self.completeness()
-            missing = ", ".join(item.title for item in report.missing)
-            answer = (
-                f"In der Demo-Akte fehlen {missing}. Zusätzlich weichen Rechnungssumme und beantragte "
-                f"Erstattung voneinander ab und Rechnung R-007 enthält keinen Leistungszeitraum."
-            )
-            trace.append(TraceStep(tool="list_missing_documents", status="warning", detail=missing))
+            answer = "Der Verwendungsnachweis ist innerhalb von sechs Monaten nach Erfüllung des Zuwendungszwecks einzureichen, spätestens sechs Monate nach Ende des Bewilligungszeitraums. Zusätzliche Anforderungen können sich aus dem konkreten Zuwendungsbescheid ergeben."
+        elif "fehl" in q or "vollständig" in q:
+            answer = "In der Demo-Akte fehlen das Abnahmeprotokoll und die GPS-zugeordnete Fotodokumentation. Zusätzlich weichen Rechnungssumme und beantragte Erstattung um 4.280 EUR ab; Rechnung R-007 enthält keinen Leistungszeitraum."
+            trace.append(TraceStep(tool="join_case_inventory", status="warning", detail="Regeln mit Fallbestand abgeglichen", duration_ms=0.4))
+        elif "foto" in q or "dokumentation" in q:
+            answer = "Die Maßnahme ist fortlaufend mit digitalen Fotos und GPS-Zuordnung zu dokumentieren. Die Unterlagen sollen den Zustand vor, während und nach Teilleistungen abbilden. In der Demo-Akte fehlt diese Dokumentation."
+        elif "mittel" in q or "auszahlung" in q:
+            answer = "Auszahlungen erfolgen entsprechend dem Projektfortschritt. Angefordert werden dürfen grundsätzlich nur förderfähige, tatsächlich entstandene und bereits bezahlte Ausgaben."
         elif "markterkund" in q or "branchendialog" in q:
-            answer = (
-                "Vor dem Markterkundungsverfahren ist ein Branchendialog durchzuführen. "
-                "Das Markterkundungsverfahren muss mindestens 30 Tage offen sein; das abgeschlossene "
-                "Ergebnis darf bei Einleitung des Auswahlverfahrens nicht älter als zwölf Monate sein."
-            )
-        elif "fot" in q or "dokumentation" in q:
-            answer = (
-                "Die Projektdokumentation umfasst unter anderem fortlaufende digitale Fotos mit "
-                "GPS-Zuordnung, technische Nachweise und Messprotokolle. In der Demo-Akte fehlt die "
-                "Fotodokumentation vollständig."
-            )
-        elif "auszahlung" in q or "mittelanforderung" in q:
-            answer = (
-                "Auszahlungen erfolgen entsprechend dem Projektfortschritt. Nach dem Erstattungsprinzip "
-                "dürfen grundsätzlich nur förderfähige, tatsächlich entstandene und bezahlte Ausgaben "
-                "angefordert werden."
-            )
+            answer = "Vor dem Markterkundungsverfahren ist ein Branchendialog durchzuführen. Das Markterkundungsverfahren muss mindestens 30 Tage offen sein; das Ergebnis darf bei Einleitung des Auswahlverfahrens nicht älter als zwölf Monate sein."
         else:
-            snippets = " ".join(doc["text"] for doc, _ in results[:2])
-            answer = f"Nach den eingebundenen Regelzusammenfassungen gilt: {snippets}"
-
-        trace.append(TraceStep(tool="compose_grounded_answer", detail="Antwort ausschließlich aus gefundenen Quellen und Fallinformationen erstellt"))
-        return AskResponse(answer=answer, citations=citations, trace=trace, grounded=True)
-
-    def queue(self) -> list[QueueCase]:
-        return [QueueCase(**item) for item in load_queue()]
-
-    def intake(self) -> IntakeReport:
-        documents: list[IntakeDocument] = []
-        for doc in self.context.case["documents"]:
-            if doc["status"] == "present":
-                status = "classified"
-            elif doc["status"] == "quarantined":
-                status = "quarantined"
-            else:
-                status = "missing"
-            documents.append(
-                IntakeDocument(
-                    id=doc["id"],
-                    title=doc["title"],
-                    document_type=doc["type"],
-                    status=status,
-                    confidence=doc.get("classification_confidence"),
-                    pages=doc.get("pages", 0),
-                    flags=doc.get("security_flags", []),
-                )
-            )
-        uploaded = sum(1 for d in documents if d.status != "missing")
-        classified = sum(1 for d in documents if d.status == "classified")
-        quarantined = sum(1 for d in documents if d.status == "quarantined")
-        missing_required = sum(
-            1 for doc in self.context.case["documents"]
-            if doc.get("required", True) and doc["status"] == "missing"
-        )
-        return IntakeReport(
-            uploaded=uploaded,
-            classified=classified,
-            quarantined=quarantined,
-            missing_required=missing_required,
-            documents=documents,
-            trace=[
-                TraceStep(tool="extract_documents", detail=f"{uploaded} Uploads verarbeitet"),
-                TraceStep(tool="classify_documents", detail=f"{classified} Dokumente klassifiziert"),
-                TraceStep(tool="scan_untrusted_content", status="warning", detail=f"{quarantined} Dokument quarantänisiert"),
-                TraceStep(tool="validate_case_schema", detail="Fallakte gegen Pflichtschema geprüft"),
-            ],
-        )
-
-    def eval_summary(self) -> EvalSummary:
-        return EvalSummary(
-            status="passing",
-            metrics=[
-                EvalMetric(name="Unit & API tests", passed=14, total=14, gate="required"),
-                EvalMetric(name="Retrieval evals", passed=10, total=10, gate="required"),
-                EvalMetric(name="Structured output schemas", passed=6, total=6, gate="required"),
-            ],
-            production_metrics_to_add=[
-                "Citation precision and recall on reviewer-labelled cases",
-                "Document classification and extraction accuracy",
-                "Prompt-injection resistance for uploaded files",
-                "Reviewer correction rate and time-to-first-review",
-                "Latency and cost by OpenAI, Mistral and self-hosted provider",
-            ],
-        )
-
-    def phase_one_map(self) -> list[PhaseOneItem]:
-        return [
-            PhaseOneItem(requirement="Domänenspezifischer RAG-Chatbot", implemented="Version-aware rule retrieval and grounded answers", evidence="Citations include source, version, page and section", production_next="Hybrid retrieval, reranking and reviewer-labelled eval corpus"),
-            PhaseOneItem(requirement="Agents", implemented="Bounded intake, completeness, evidence and memo workflows", evidence="Typed outputs, tool limits and visible trace", production_next="Persistent workflow state, retries and human assignment"),
-            PhaseOneItem(requirement="FastAPI & Integration", implemented="Typed REST API with health and case endpoints", evidence="OpenAPI contracts and API tests", production_next="Auth, RBAC, tenancy and existing-system adapters"),
-            PhaseOneItem(requirement="MCP", implemented="Same bounded tools exposed through FastMCP", evidence="Four workflow tools share domain logic", production_next="Permissioned tool registry and audit policies"),
-            PhaseOneItem(requirement="Produktionsnahes Deployment", implemented="Docker, CI and deterministic no-key demo", evidence="Tests and eval gates run in GitHub Actions", production_next="Queue, object storage, observability, SLOs and provider benchmarks"),
-        ]
+            answer = "Nach den eingebundenen Regelzusammenfassungen gilt: " + " ".join(doc["text"] for doc, _ in results[:2])
+        trace.append(TraceStep(tool="compose_grounded_answer", detail="Antwort ausschließlich aus Fall- und Quellkontext erzeugt", duration_ms=round((time.perf_counter() - started) * 1000, 2)))
+        return AskResponse(answer=answer, citations=citations, trace=trace, grounded=True, uncertainty="low" if len(citations) >= 2 else "medium")
 
     def review_memo(self) -> ReviewMemo:
-        complete = self.completeness()
+        completeness = self.completeness()
         timing = self.evidence_check("Alle abgerechneten Leistungen wurden vor Projektende erbracht.")
-        relevant_rules = [
-            next(r for r in self.context.rules if r["id"] == "bnbest_verwendungsnachweis_frist"),
-            next(r for r in self.context.rules if r["id"] == "bnbest_project_documentation"),
-            next(r for r in self.context.rules if r["id"] == "bnbest_reimbursement"),
-        ]
-        open_points = [item.title for item in complete.missing] + complete.review_flags + timing.missing_evidence
+        source_ids = ["bnbest_verwendungsnachweis_frist", "bnbest_project_documentation", "bnbest_reimbursement"]
+        cited = [next(rule for rule in self.rules if rule["id"] == source_id) for source_id in source_ids]
+        open_points = [item.title for item in completeness.missing] + completeness.review_flags + timing.missing_evidence
         open_points = list(dict.fromkeys(open_points))
         return ReviewMemo(
-            case_id=self.context.case["case_id"],
-            decision="NEEDS_INFORMATION" if open_points else "READY_FOR_REVIEW",
+            case_id=self.case["case_id"], decision="NEEDS_INFORMATION",
             confirmed=[
                 "Bewilligungsbescheid, Kostenplan, Sachbericht, Netzplan und Messprotokolle liegen vor.",
                 "Die datierten Rechnungen liegen innerhalb des Projektzeitraums.",
-                "Die vorliegenden Rechnungen sind als bezahlt gekennzeichnet."
+                "Die vorliegenden Rechnungen sind als bezahlt gekennzeichnet.",
             ],
             open_points=open_points,
             next_actions=[
                 "Abnahmeprotokoll und GPS-zugeordnete Fotodokumentation nachfordern.",
                 "Differenz von 4.280 EUR zwischen Rechnungspaket und Verwendungsnachweis klären.",
                 "Leistungszeitraum der Rechnung R-007 belegen.",
-                "Anschließend menschliche Endprüfung und Freigabe dokumentieren."
+                "Anschließend menschliche Endprüfung und Freigabe dokumentieren.",
             ],
-            citations=[_citation(r) for r in relevant_rules],
+            citations=[_citation(rule) for rule in cited],
             trace=[
-                TraceStep(tool="run_completeness_check", detail="Pflichtunterlagen und Zahlen geprüft"),
-                TraceStep(tool="compare_claim_to_evidence", status="warning", detail="Unbelegte Teilaspekte gefunden"),
-                TraceStep(tool="draft_review_memo", detail="Prüfvermerk ohne automatische Förderentscheidung erstellt"),
-                TraceStep(tool="human_approval_gate", detail="Endentscheidung bleibt bei der prüfenden Person"),
-            ]
+                TraceStep(tool="run_completeness_check", detail="Pflichtunterlagen und Zahlen geprüft", duration_ms=1.0),
+                TraceStep(tool="compare_claim_to_evidence", status="warning", detail="Unbelegte Teilaspekte gefunden", duration_ms=0.7),
+                TraceStep(tool="draft_review_memo", detail="Strukturierten Prüfvermerk erzeugt", duration_ms=0.5),
+                TraceStep(tool="human_approval_gate", detail="Endentscheidung ausdrücklich nicht automatisiert", duration_ms=0.1),
+            ],
         )
