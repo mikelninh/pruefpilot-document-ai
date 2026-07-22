@@ -1,0 +1,32 @@
+[
+  {
+    "case_id": "GF-2026-014",
+    "applicant": "Stadt Falkenried (synthetisch)",
+    "programme": "Gigabitförderung",
+    "stage": "Vorprüfung",
+    "status": "needs_information",
+    "risk_score": 72,
+    "open_items": 5,
+    "recommended_next_action": "Unterlagen nachfordern"
+  },
+  {
+    "case_id": "GF-2026-021",
+    "applicant": "Landkreis Sonnenhain (synthetisch)",
+    "programme": "Gigabitförderung",
+    "stage": "Dokumenteneingang",
+    "status": "processing",
+    "risk_score": 38,
+    "open_items": 2,
+    "recommended_next_action": "Extraktion abschließen"
+  },
+  {
+    "case_id": "GF-2026-026",
+    "applicant": "Gemeinde Uferstedt (synthetisch)",
+    "programme": "Gigabitförderung",
+    "stage": "Fachprüfung",
+    "status": "ready_for_review",
+    "risk_score": 18,
+    "open_items": 0,
+    "recommended_next_action": "Menschliche Endprüfung"
+  }
+]
