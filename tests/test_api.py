@@ -1,29 +1,66 @@
+from __future__ import annotations
+
+from io import BytesIO
 from fastapi.testclient import TestClient
+from pypdf import PdfWriter
+
 from app.main import app
 
 client = TestClient(app)
 
-def test_health():
-    response = client.get("/health")
+
+def blank_pdf() -> bytes:
+    stream = BytesIO()
+    writer = PdfWriter()
+    writer.add_blank_page(width=300, height=300)
+    writer.write(stream)
+    return stream.getvalue()
+
+
+def test_health_and_openapi():
+    response = client.get("/api/health")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+    assert response.headers["x-request-id"].startswith("req_")
+    assert client.get("/api/openapi.json").status_code == 200
 
-def test_ask_endpoint_is_grounded():
-    response = client.post(
-        "/api/cases/GF-2026-014/ask",
-        json={"question": "Welche Frist gilt für den Verwendungsnachweis?"}
-    )
+
+def test_queue_endpoint():
+    response = client.get("/api/queue")
+    assert response.status_code == 200
+    assert response.json()[0]["case_id"] == "GF-2026-014"
+
+
+def test_upload_rejects_non_pdf():
+    response = client.post("/api/upload", files={"file": ("note.txt", b"hello", "text/plain")})
+    assert response.status_code == 415
+
+
+def test_upload_processes_real_pdf():
+    response = client.post("/api/upload", files={"file": ("demo.pdf", blank_pdf(), "application/pdf")})
     assert response.status_code == 200
     payload = response.json()
-    assert payload["grounded"] is True
-    assert payload["citations"]
+    assert payload["page_count"] == 1
+    assert payload["sha256"]
+    assert payload["status"] in {"ready", "manual_review"}
 
-def test_intake_endpoint():
-    response = client.post("/api/cases/GF-2026-014/intake")
-    assert response.status_code == 200
-    assert response.json()["quarantined"] == 1
 
-def test_phase_one_endpoint():
-    response = client.get("/api/phase-one")
+def test_feedback_endpoint():
+    response = client.post("/api/feedback", json={
+        "case_id": "GF-2026-014",
+        "document_id": "D05",
+        "field_name": "amount",
+        "previous_value": "730000",
+        "corrected_value": "734280",
+        "note": "Review correction",
+    })
     assert response.status_code == 200
-    assert len(response.json()) >= 5
+    assert response.json()["eval_case"]["expected"] == "734280"
+
+
+def test_benchmark_endpoint():
+    response = client.post("/api/benchmark/run", json={"providers": ["deterministic", "openai"]})
+    assert response.status_code == 200
+    metrics = response.json()["metrics"]
+    assert metrics[0]["status"] == "measured"
+    assert metrics[1]["status"] == "not_configured"
