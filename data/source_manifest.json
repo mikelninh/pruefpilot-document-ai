@@ -1,0 +1,23 @@
+{
+  "retrieved_at": "2026-07-22",
+  "disclaimer": "Independent application prototype. Public rules are summarized; the synthetic case is fictional and contains no real personal data.",
+  "sources": [
+    {"title":"AI Engineer (m/w/d) - aconium","url":"https://aconium.eu/project/ai-engineer-m-w-d/","use":"Role and Phase-1 requirements"},
+    {"title":"Gigabit-Richtlinie 2.0, 3. Änderungsfassung","url":"https://www.gigabitfoerderung.gov.de/wp-content/uploads/2026/06/260331_Gigabit-RL_2026.pdf","use":"Domain rules and evidence requirements"},
+    {"title":"BNBest-Gigabit, Stand 26.06.2026","url":"https://www.gigabitfoerderung.gov.de/wp-content/uploads/2026/06/260626_BNBest-Gigabit_Aenderungen-2026.pdf","use":"Documentation, reimbursement and proof obligations"},
+    {"title":"Förderaufruf Infrastrukturprojekte 2026","url":"https://www.gigabitfoerderung.gov.de/wp-content/uploads/2026/04/260401_Aufruf-zur-Foerderung-von-Infrastrukturprojekten_2026.pdf","use":"Funding limits and application period"},
+    {"title":"Unternehmensprofil - aconium","url":"https://aconium.eu/das-unternehmen/","use":"Öffentlicher Sektor, Fördermitteladministration und Rolle als neutraler Moderator"},
+    {"title":"Leistungen - aconium","url":"https://aconium.eu/leistungen/","use":"End-to-end Projektentwicklung, Administration, Daten, Finanzierung und Umsetzung"},
+    {"title":"Digitalisierung in der öffentlichen Verwaltung - aconium","url":"https://aconium.eu/smart-country-convention-2025/","use":"Prozessmodernisierung, Mitarbeitendenentlastung und Digitalisierung als Mittel statt Selbstzweck"}
+  ],
+  "product_context": {
+    "company": "aconium GmbH",
+    "role": "AI Engineer (m/w/d)",
+    "phase_1_goal": "Ersten domänenspezifischen RAG-Chatbot mit Agents für Document AI entwickeln und produktionsnah deployen.",
+    "company_understanding": [
+      "aconium begleitet den öffentlichen Sektor bei Digitalisierung, Energie, Mobilität und Bildung.",
+      "Das Unternehmen organisiert und verwaltet Mittel aus Infrastruktur- und Regionalförderung und agiert als neutraler Moderator zwischen Wirtschaft und öffentlicher Hand.",
+      "Document AI soll Prüfer:innen im öffentlichen Sektor täglich unterstützen; Nachvollziehbarkeit, Prozessintegration und menschliche Entscheidungshoheit sind daher zentrale Produktanforderungen."
+    ]
+  }
+}
