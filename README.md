@@ -1,54 +1,108 @@
-# PrüfPilot v2 - Agentic Document AI für öffentliche Prüfprozesse
+# PrüfPilot v3 — Agentic Document AI für öffentliche Prüfprozesse
 
 > Unabhängige Bewerbungs-Arbeitsprobe für die AI-Engineer-Rolle bei aconium.  
-> Kein allgemeiner PDF-Chat, sondern ein enger, prüfbarer Phase-1-Prototyp für Document AI.
+> Kein allgemeiner PDF-Chat, sondern ein enger, messbarer Reviewer-Workflow für Document AI.
 
-**Live-Demo:** https://mikelninh.github.io/pruefpilot/  
-**Demo-Fall:** `GF-2026-014` - vollständig synthetischer Verwendungsnachweis in der Gigabitförderung.
+**Visuelle Live-App:** https://pruefpilot-aconium.vercel.app  
+**Öffentliches FastAPI-Backend:** https://pruefpilot-document-ai.vercel.app  
+**Interaktive OpenAPI-Dokumentation:** https://pruefpilot-document-ai.vercel.app/api/docs  
+**Statische Fallback-Demo:** https://mikelninh.github.io/pruefpilot/  
+**Demo-Fall:** `GF-2026-014`, eine vollständig synthetische Gigabit-Förderakte.
 
-## Die Produktthese
+## Der eine Satz
 
-aconium unterstützt den öffentlichen Sektor und administriert komplexe Förder- und Infrastrukturprojekte. Die ausgeschriebene Rolle soll Document AI als agentisches Dokumentenverarbeitungssystem aufbauen, das Prüfer:innen täglich unterstützt. Deshalb muss das Produkt vor allem:
+> Ich habe Ihre Phase-1-Aufgabe in ein kleines, prüferorientiertes Produkt übersetzt: einen begrenzten Document-AI-Workflow mit echtem PDF-Intake, quellenbasiertem RAG, Beleg- und Vollständigkeitsprüfungen, MCP-Tools, FastAPI, Evaluations-Gates, Reviewer-Feedback und menschlicher Freigabe.
 
-- Dokumente zuverlässig aufnehmen, klassifizieren und prüfen,
-- Regeln und Dokumentversionen nachvollziehbar zitieren,
-- Widersprüche und fehlende Nachweise sichtbar machen,
-- in bestehende Prüfworkflows passen,
-- Unsicherheit eskalieren statt verstecken,
-- die fachliche Entscheidung beim Menschen lassen.
+## Was v3 tatsächlich implementiert
 
-Details: [`docs/aconium-fit.md`](docs/aconium-fit.md)
+### Reviewer-Produkt
 
-## Was v2 zusätzlich zeigt
+- priorisierte Fall-Queue und empfohlener nächster Schritt
+- synthetische Förderakte mit Pflichtunterlagen, Beträgen, Fristen und Nachweisen
+- visueller Review-Workspace statt eines isolierten Chatfensters
+- geführte 90-Sekunden-Produkttour
 
-- Reviewer-Queue mit priorisierten Fällen und nächster sinnvoller Aktion
-- Intake-Pipeline mit Klassifikation, Schema-Validierung und Quarantäne
-- Dokument-Prompt-Injection als expliziter Security-Test
-- Grounded RAG mit Version, Seite, Abschnitt und Quellenlink
-- Completeness- und Evidence-Agent mit strukturierten Ausgaben
-- Prüfvermerk mit Human-Approval-Gate
-- Phase-1-Mapping von Ausschreibung zu Implementierung und Production Next Step
-- Eval-Dashboard und ehrliche Grenzen
-- austauschbare Model-Provider-Grenze für OpenAI, Mistral oder Open Source
+### Echter PDF-Intake
+
+`POST /api/upload` verarbeitet reale PDF-Bytes:
+
+1. Dateityp und Größenlimit prüfen
+2. SHA-256 bilden
+3. Text mit `pypdf` extrahieren
+4. Dokumenttyp klassifizieren
+5. Beträge, Datumsangaben und Rechnungsnummern extrahieren
+6. document-borne Prompt Injection erkennen
+7. strukturierte Ausgabe speichern und im Review-Workspace darstellen
+
+### Grounded RAG und begrenzte Agents
+
+- Retrieval über versionierte Regelabschnitte
+- Zitate mit Titel, Version, Seite, Abschnitt und Quellenlink
+- Grounding Guard bei fehlender Grundlage
+- bounded Completeness-, Evidence- und Review-Workflows
+- sichtbare Tool-Traces und Request IDs
+- Human-Approval-Gate statt automatischer Förderentscheidung
+
+### Reviewer-Feedback → Eval-Fall
+
+Korrekturen werden über `POST /api/feedback` in ein reproduzierbares Eval-Format übersetzt. Die öffentliche Demo spiegelt Korrekturen zusätzlich im Browser, damit der Feedback-Loop trotz serverloser Instanzrotation sichtbar bleibt.
+
+### Ehrlicher Provider-Benchmark
+
+Die Architektur enthält Adapter für:
+
+- deterministic baseline — reproduzierbar und öffentlich messbar
+- OpenAI — nur bei konfiguriertem Credential
+- Mistral — nur bei konfiguriertem Credential
+- selbst gehostetes OpenAI-kompatibles Modell — nur bei konfiguriertem Endpoint
+
+Nicht ausgeführte Provider erhalten **keine erfundenen Scores und keine geratenen Kosten**. Der öffentliche Smoke-Benchmark misst sechs transparente Fixtures; der vollständige lokale Harness enthält zwölf Gold-Fälle für Dokumenttyp, Beträge und Prompt-Injection-Erkennung.
+
+### Produktionspfad
+
+- Docker und Docker Compose
+- GitHub Actions für Tests und Retrieval-Evals
+- öffentliches FastAPI-Deployment
+- SQLite-Persistenz lokal und explizit begrenzter serverloser Demo-State
+- Postgres-Schema für Fälle, Dokumente, Feedback und Agent Runs
+- Provider-, Storage- und MCP-Grenzen als austauschbare Verträge
 
 ## Architektur
 
 ```mermaid
-flowchart LR
-    UI[Reviewer Workspace] --> API[FastAPI]
-    API --> O[Bounded Orchestrator]
-    O --> I[Intake + Security]
-    O --> Q[Grounded RAG]
-    O --> C[Completeness]
-    O --> E[Evidence]
-    O --> M[Review Memo]
-    I --> CASE[Synthetic Case Store]
-    Q --> RULES[Versioned Rule Corpus]
-    C --> TOOLS[Typed Tools / MCP]
-    E --> TOOLS
-    M --> H[Human Approval Gate]
-    API --> OBS[Trace, Eval, Cost & Latency Boundary]
+flowchart TB
+    Reviewer[Reviewer Workspace] --> API[FastAPI + OpenAPI]
+    API --> Intake[PDF Intake + Security Scan]
+    API --> Agent[Bounded Orchestrator]
+    Agent --> RAG[Versioned Grounded RAG]
+    Agent --> Complete[Completeness]
+    Agent --> Evidence[Claim ↔ Evidence]
+    Agent --> Memo[Review Memo]
+    Intake --> State[(Case / Document State)]
+    RAG --> Rules[(Versioned Rule Corpus)]
+    Complete --> Tools[MCP / Typed Tools]
+    Evidence --> Tools
+    Memo --> Human[Human Approval Gate]
+    Reviewer --> Feedback[Reviewer Correction]
+    Feedback --> Evals[Regression Eval Case]
+    Evals --> Benchmark[Provider Benchmark]
 ```
+
+## Öffentliche API
+
+| Methode | Endpoint | Zweck |
+|---|---|---|
+| GET | `/api/health` | Health, Version, Provider- und Persistenzstatus |
+| GET | `/api/queue` | priorisierte Reviewer-Queue |
+| POST | `/api/upload` | echter PDF-Intake |
+| POST | `/api/cases/GF-2026-014/ask` | grounded Q&A |
+| POST | `/api/cases/GF-2026-014/completeness` | Pflichtunterlagen prüfen |
+| POST | `/api/cases/GF-2026-014/evidence` | Aussage gegen Belege prüfen |
+| POST | `/api/cases/GF-2026-014/review-memo` | Prüfvermerk entwerfen |
+| POST | `/api/feedback` | Reviewer-Korrektur in Eval-Fall überführen |
+| GET | `/api/feedback` | gespeicherte Korrekturen lesen |
+| GET | `/api/benchmark` | gemessene Baseline und Provider-Status |
+| GET | `/api/phase-one` | Rolle → Implementierung → Production Next |
 
 ## Schnellstart
 
@@ -56,13 +110,15 @@ flowchart LR
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-python scripts/generate_demo_pdfs.py
 pytest -q
 python evals/run_evals.py
 uvicorn app.main:app --reload
 ```
 
-Dann `http://localhost:8000` öffnen.
+Danach:
+
+- Produkt: http://localhost:8000
+- OpenAPI: http://localhost:8000/api/docs
 
 ### Docker
 
@@ -70,63 +126,72 @@ Dann `http://localhost:8000` öffnen.
 docker compose up --build
 ```
 
-## API
+## MCP
 
-| Methode | Endpoint | Zweck |
-|---|---|---|
-| GET | `/health` | Health / readiness |
-| GET | `/api/queue` | Priorisierte Reviewer-Queue |
-| POST | `/api/cases/GF-2026-014/intake` | Klassifikation, Schema und Security-Scan |
-| POST | `/api/cases/GF-2026-014/ask` | Grounded RAG |
-| POST | `/api/cases/GF-2026-014/completeness` | Pflichtunterlagen prüfen |
-| POST | `/api/cases/GF-2026-014/evidence` | Aussage gegen Belege prüfen |
-| POST | `/api/cases/GF-2026-014/review-memo` | Prüfvermerk entwerfen |
-| GET | `/api/evals` | Test- und Eval-Zusammenfassung |
-| GET | `/api/phase-one` | Rolle → Implementierung → Production Next |
+```bash
+pip install -e ".[mcp]"
+python -m app.mcp_server
+```
 
-## MCP Tools
+Tools:
 
+- `get_reviewer_queue`
 - `search_requirements`
-- `classify_case_documents`
 - `list_missing_documents`
 - `compare_claim_to_evidence`
 - `draft_review_memo`
-- `get_reviewer_queue`
 
-## Sicherheits- und Produktgrenzen
+## Sicherheitsgrenzen
 
 - keine autonome Förderentscheidung
-- keine externen Aktionen
-- keine echten personenbezogenen Daten
-- untrusted document content wird nicht als Systemanweisung behandelt
-- Grounding Guard bei fehlender Quelle
-- strukturierte und validierte Outputs
-- sichtbare Tool-Traces und menschliche Freigabe
+- keine externen Aktionen aus Dokumentinhalten
+- keine echten personenbezogenen Demo-Daten
+- Uploadlimit und PDF-Signaturprüfung
+- document-borne instructions bleiben untrusted content
+- Prompt-Injection-Funde werden quarantänisiert
+- strukturierte Outputs und sichtbare Unsicherheit
+- versionierte Quellen und Grounding Guard
+- menschliche Freigabe bleibt erforderlich
 
-## Tests und Evaluation
+Siehe [`docs/threat-model.md`](docs/threat-model.md).
 
-```bash
-pytest -q
-python evals/run_evals.py
-```
+## Persistenz — ehrlich getrennt
 
-Aktueller Stand: **14/14 Tests** und **10/10 Retrieval-Evals** bestanden.
+Die lokale Docker-Version nutzt dauerhaftes SQLite. Auf dem öffentlichen serverlosen Backend ist der Dateisystem-State instanzlokal; deshalb zeigt die öffentliche Demo diesen Status offen und spiegelt Reviewer-Korrekturen im Browser. Das Repo enthält ein Postgres-Schema und eine Adaptergrenze für einen echten Pilotbetrieb. Es wird nicht behauptet, dass die öffentliche Demo bereits ein mandantenfähiges DMS ist.
 
-Der öffentliche Demo-Modus ist deterministisch und benötigt keinen API-Key. Das vermeidet eine fragile Bewerbungsdemo und trennt die Produktlogik sauber von der Modellwahl.
+Siehe [`db/schema.sql`](db/schema.sql) und [`docs/production-roadmap.md`](docs/production-roadmap.md).
 
-## Ehrliche Grenzen
+## Tests und Evaluationen
 
-- kuratierte Regelzusammenfassungen statt vollständigem OCR-/Vektorkorpus
+Lokal verifiziert:
+
+- **18/18 Unit- und API-Tests bestanden**
+- **10/10 Retrieval-Evaluationen bestanden**
+
+Gemessen werden unter anderem:
+
+- Dokumentklassifikation auf festen Gold-Fällen
+- Betrags-Extraktion
+- Prompt-Injection-Recall
+- Top-1-Regelretrieval
+- Grounding Guard
+- Human-Approval-Grenze
+- Feedback-zu-Eval-Konvertierung
+- API-Verträge und realer PDF-Upload
+
+## Bekannte Grenzen
+
+- kuratierte Regelbasis statt vollständigem produktivem OCR-/Vektorkorpus
 - ein vollständig ausgearbeiteter Demo-Fall
-- lexical BM25 statt produktivem Hybrid Retrieval + Reranking
-- noch kein SSO, RBAC, Queue, Object Storage oder echtes DMS
-- keine Provider-Benchmarks ohne private Credentials und belastbaren Eval-Korpus
-
-Production Roadmap: [`docs/production-roadmap.md`](docs/production-roadmap.md)
+- noch kein SSO, RBAC, Mandantenmodell oder produktives DMS
+- öffentliches Serverless-Dateisystem ist nicht dauerhaft
+- externe Modellprovider werden erst nach kontrolliertem Lauf bewertet
 
 ## Quellen und Disclaimer
 
-Offizielle Quellen stehen in [`data/source_manifest.json`](data/source_manifest.json). Alle Fall- und Antragstellerdaten sind synthetisch. PrüfPilot ist eine unabhängige Arbeitsprobe und nicht mit aconium verbunden.
+Die fachliche Produktthese basiert auf offiziellen aconium-Seiten zur AI-Engineer-Rolle, Fördermittelprüfung, Finanzprüfung und öffentlichen Digitalisierung sowie auf offiziellen Gigabit-Förderunterlagen. Die URLs stehen in [`data/source_manifest.json`](data/source_manifest.json).
+
+Alle Fall-, Personen- und Projektdaten sind synthetisch. PrüfPilot ist nicht mit aconium verbunden.
 
 ## Autor
 
