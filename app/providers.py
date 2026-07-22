@@ -1,39 +1,119 @@
 from __future__ import annotations
+
+import json
+import time
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
-class ModelProvider(Protocol):
+import httpx
+
+from .config import settings
+
+
+class Provider(Protocol):
     name: str
-    def generate(self, *, system: str, user: str, context: str) -> str: ...
 
-@dataclass(frozen=True)
-class ProviderConfig:
-    provider: str = "deterministic"
-    model: str = "rules-and-templates-v1"
-    timeout_seconds: int = 30
-    max_output_tokens: int = 900
+    def configured(self) -> bool: ...
+    def extract(self, prompt: str, schema: dict[str, Any]) -> tuple[dict[str, Any], float, float | None]: ...
 
-class DeterministicDemoProvider:
-    """No-key provider used by the public demo and CI.
 
-    The production boundary is explicit: OpenAI, Mistral or an open-source model
-    can implement the same protocol without changing workflow or API contracts.
-    """
-    name = "deterministic"
+@dataclass
+class OpenAIProvider:
+    name: str = "openai"
 
-    def generate(self, *, system: str, user: str, context: str) -> str:
-        return context
+    def configured(self) -> bool:
+        return bool(settings.openai_api_key)
 
-class ProviderRegistry:
-    def __init__(self, config: ProviderConfig | None = None) -> None:
-        self.config = config or ProviderConfig()
-        self._providers = {"deterministic": DeterministicDemoProvider()}
+    def extract(self, prompt: str, schema: dict[str, Any]) -> tuple[dict[str, Any], float, float | None]:
+        if not self.configured():
+            raise RuntimeError("OPENAI_API_KEY is not configured")
+        started = time.perf_counter()
+        payload = {
+            "model": settings.openai_model,
+            "input": prompt,
+            "store": False,
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "document_extraction",
+                    "schema": schema,
+                    "strict": True,
+                }
+            },
+        }
+        with httpx.Client(timeout=60) as client:
+            response = client.post(
+                "https://api.openai.com/v1/responses",
+                headers={"Authorization": f"Bearer {settings.openai_api_key}"},
+                json=payload,
+            )
+            response.raise_for_status()
+            body = response.json()
+        text = body.get("output_text")
+        if not text:
+            for item in body.get("output", []):
+                for content in item.get("content", []):
+                    if content.get("type") == "output_text":
+                        text = content.get("text")
+                        break
+        return json.loads(text or "{}"), (time.perf_counter() - started) * 1000, None
 
-    def get(self) -> ModelProvider:
-        try:
-            return self._providers[self.config.provider]
-        except KeyError as exc:
-            raise ValueError(
-                f"Provider '{self.config.provider}' is not configured in the public demo. "
-                "Add a private adapter and credentials for production use."
-            ) from exc
+
+@dataclass
+class MistralProvider:
+    name: str = "mistral"
+
+    def configured(self) -> bool:
+        return bool(settings.mistral_api_key)
+
+    def extract(self, prompt: str, schema: dict[str, Any]) -> tuple[dict[str, Any], float, float | None]:
+        if not self.configured():
+            raise RuntimeError("MISTRAL_API_KEY is not configured")
+        started = time.perf_counter()
+        payload = {
+            "model": settings.mistral_model,
+            "messages": [
+                {"role": "system", "content": "Return only valid JSON matching the requested schema."},
+                {"role": "user", "content": prompt},
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0,
+        }
+        with httpx.Client(timeout=60) as client:
+            response = client.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {settings.mistral_api_key}"},
+                json=payload,
+            )
+            response.raise_for_status()
+            body = response.json()
+        text = body["choices"][0]["message"]["content"]
+        return json.loads(text), (time.perf_counter() - started) * 1000, None
+
+
+@dataclass
+class LocalHTTPProvider:
+    name: str = "local"
+
+    def configured(self) -> bool:
+        return bool(settings.local_model_url)
+
+    def extract(self, prompt: str, schema: dict[str, Any]) -> tuple[dict[str, Any], float, float | None]:
+        if not self.configured():
+            raise RuntimeError("LOCAL_MODEL_URL is not configured")
+        started = time.perf_counter()
+        with httpx.Client(timeout=120) as client:
+            response = client.post(
+                str(settings.local_model_url),
+                json={"prompt": prompt, "schema": schema, "temperature": 0},
+            )
+            response.raise_for_status()
+            body = response.json()
+        return body, (time.perf_counter() - started) * 1000, None
+
+
+PROVIDERS: dict[str, Provider] = {
+    "openai": OpenAIProvider(),
+    "mistral": MistralProvider(),
+    "local": LocalHTTPProvider(),
+}
