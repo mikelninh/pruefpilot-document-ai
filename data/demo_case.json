@@ -1,0 +1,44 @@
+{
+  "case_id": "GF-2026-014",
+  "title": "Gigabitförderung - Verwendungsnachweis Stadt Falkenried",
+  "applicant": "Stadt Falkenried (synthetisch)",
+  "project_period": {
+    "start": "2026-04-01",
+    "end": "2026-12-31"
+  },
+  "approved_grant_eur": 1200000,
+  "claimed_total_eur": 730000,
+  "invoice_total_eur": 734280,
+  "documents": [
+    {"id":"D01","type":"bewilligungsbescheid","title":"Bewilligungsbescheid","status":"present","pages":4,"required":true,"classification_confidence":0.97,"extraction_status":"complete"},
+    {"id":"D02","type":"kostenplan","title":"Kostenplan","status":"present","pages":2,"required":true,"classification_confidence":0.97,"extraction_status":"complete"},
+    {"id":"D03","type":"rechnungspaket","title":"Rechnungspaket","status":"present","pages":7,"required":true,"classification_confidence":0.97,"extraction_status":"complete"},
+    {"id":"D04","type":"sachbericht","title":"Sachbericht","status":"present","pages":3,"required":true,"classification_confidence":0.97,"extraction_status":"complete"},
+    {"id":"D05","type":"verwendungsnachweis","title":"Zahlenmäßiger Verwendungsnachweis","status":"present","pages":2,"required":true,"classification_confidence":0.97,"extraction_status":"complete"},
+    {"id":"D06","type":"netzplan","title":"Netzplan","status":"present","pages":1,"required":true,"classification_confidence":0.97,"extraction_status":"complete"},
+    {"id":"D07","type":"messprotokolle","title":"Messprotokolle","status":"present","pages":8,"required":true,"classification_confidence":0.97,"extraction_status":"complete"},
+    {"id":"D08","type":"abnahmeprotokoll","title":"Abnahmeprotokoll","status":"missing","pages":0,"required":true,"classification_confidence":null,"extraction_status":"not_uploaded"},
+    {"id":"D09","type":"fotodokumentation","title":"Fotodokumentation mit GPS-Zuordnung","status":"missing","pages":0,"required":true,"classification_confidence":null,"extraction_status":"not_uploaded"},
+    {"id":"D10","type":"sonstiges","title":"Lieferantenhinweis mit eingebetteter Anweisung","status":"quarantined","pages":1,"required":false,"classification_confidence":0.64,"extraction_status":"quarantined","security_flags":["document_prompt_injection"]}
+  ],
+  "invoices": [
+    {"invoice":"R-001","amount_eur":165000,"service_from":"2026-05-02","service_to":"2026-06-18","paid":true},
+    {"invoice":"R-004","amount_eur":248500,"service_from":"2026-07-01","service_to":"2026-09-30","paid":true},
+    {"invoice":"R-006","amount_eur":205780,"service_from":"2026-10-04","service_to":"2026-12-15","paid":true},
+    {"invoice":"R-007","amount_eur":115000,"service_from":null,"service_to":null,"paid":true}
+  ],
+  "claims": [
+    "Alle abgerechneten Leistungen wurden vor Projektende erbracht.",
+    "Die beantragte Summe stimmt mit dem Rechnungspaket überein.",
+    "Die Projektdokumentation ist vollständig."
+  ],
+  "required_document_types": [
+    "bewilligungsbescheid","kostenplan","rechnungspaket","sachbericht","verwendungsnachweis","netzplan","messprotokolle","abnahmeprotokoll","fotodokumentation"
+  ],
+  "workflow": {
+    "owner_role": "Prüfer:in Fördermittelmanagement",
+    "current_stage": "Formale und zahlenmäßige Vorprüfung",
+    "recommended_next_action": "Fehlende Unterlagen nachfordern und Betragsdifferenz klären",
+    "human_decision_required": true
+  }
+}
