@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pruefpilot-document-ai"
+version = "0.1.0"
+description = "Agentic document review prototype for a synthetic public-sector funding file."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.8",
+  "httpx>=0.27"
+]
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.2"]
+demo = ["reportlab>=4.2"]
+dev = ["pytest>=8.2", "ruff>=0.6", "reportlab>=4.2"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
