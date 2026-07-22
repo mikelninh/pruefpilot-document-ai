@@ -4,26 +4,30 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pruefpilot-document-ai"
-version = "0.1.0"
-description = "Agentic document review prototype for a synthetic public-sector funding file."
+version = "1.0.0"
+description = "Reviewer-facing Document AI prototype for public-sector funding workflows."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-  "fastapi>=0.115",
-  "uvicorn[standard]>=0.30",
-  "pydantic>=2.8",
-  "httpx>=0.27"
+  "fastapi>=0.128",
+  "pydantic>=2.13",
+  "pypdf>=5.9",
+  "python-multipart>=0.0.20",
+  "httpx>=0.28"
 ]
 
 [project.optional-dependencies]
+dev = ["pytest>=9", "ruff>=0.9", "reportlab>=4"]
 mcp = ["mcp>=1.2"]
-demo = ["reportlab>=4.2"]
-dev = ["pytest>=8.2", "ruff>=0.6", "reportlab>=4.2"]
+postgres = ["psycopg[binary]>=3.2"]
+
+[tool.vercel]
+entrypoint = "app.main:app"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
 
 [tool.ruff]
-line-length = 100
+line-length = 110
 target-version = "py311"
