@@ -1,0 +1,8 @@
+services:
+  pruefpilot:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: demo
+    restart: unless-stopped
