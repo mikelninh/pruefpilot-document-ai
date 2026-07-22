@@ -1,0 +1,102 @@
+[
+  {
+    "id": "gigabit_eligibility_thresholds",
+    "title": "Gigabit-Richtlinie 2.0 - Förderfähigkeit",
+    "source_url": "https://www.gigabitfoerderung.gov.de/wp-content/uploads/2026/06/260331_Gigabit-RL_2026.pdf",
+    "version": "3. Änderungsfassung vom 31.03.2026",
+    "page": 4,
+    "section": "1.2 Förderfähigkeit",
+    "text": "Förderfähig sind grundsätzlich Gebiete ohne erwartbare Versorgung von mindestens 300 Mbit/s im Download und 150 Mbit/s im Upload. Bestimmte Kabel- und Mehrfachversorgungen schließen eine Förderung aus.",
+    "tags": ["förderfähigkeit", "bandbreite", "docsis", "gebiet"]
+  },
+  {
+    "id": "gigabit_branch_dialogue",
+    "title": "Gigabit-Richtlinie 2.0 - Branchendialog und Markterkundung",
+    "source_url": "https://www.gigabitfoerderung.gov.de/wp-content/uploads/2026/06/260331_Gigabit-RL_2026.pdf",
+    "version": "3. Änderungsfassung vom 31.03.2026",
+    "page": 8,
+    "section": "5.4-5.7",
+    "text": "Vor dem Markterkundungsverfahren ist ein Branchendialog durchzuführen. Das Markterkundungsverfahren muss mindestens 30 Tage offen sein; sein Ergebnis darf bei Einleitung des Auswahlverfahrens nicht älter als zwölf Monate sein.",
+    "tags": ["branchendialog", "markterkundungsverfahren", "frist", "30 tage", "zwölf monate"]
+  },
+  {
+    "id": "gigabit_payout_evidence",
+    "title": "Gigabit-Richtlinie 2.0 - Auszahlung und Nachweise",
+    "source_url": "https://www.gigabitfoerderung.gov.de/wp-content/uploads/2026/06/260331_Gigabit-RL_2026.pdf",
+    "version": "3. Änderungsfassung vom 31.03.2026",
+    "page": 14,
+    "section": "8 B Auszahlung",
+    "text": "Fördermittel werden entsprechend dem Projektfortschritt auf Anforderung ausgezahlt. Die erforderlichen Nachweise müssen spätestens zur abschließenden Verwendungsnachweisprüfung eingereicht werden.",
+    "tags": ["auszahlung", "mittelanforderung", "projektfortschritt", "nachweise"]
+  },
+  {
+    "id": "gigabit_proof_rules",
+    "title": "Gigabit-Richtlinie 2.0 - Zwischen- und Verwendungsnachweise",
+    "source_url": "https://www.gigabitfoerderung.gov.de/wp-content/uploads/2026/06/260331_Gigabit-RL_2026.pdf",
+    "version": "3. Änderungsfassung vom 31.03.2026",
+    "page": 14,
+    "section": "8 C Zwischen- und Verwendungsnachweise",
+    "text": "Für Zwischen- und Verwendungsnachweise gelten die ANBest und BNBest. Die Bewilligungsbehörde kann zusätzliche Nachweispflichten im Zuwendungsbescheid festlegen; die Übermittlung erfolgt über die Onlineplattform.",
+    "tags": ["verwendungsnachweis", "zwischennachweis", "onlineplattform", "nachweispflicht"]
+  },
+  {
+    "id": "bnbest_reimbursement",
+    "title": "BNBest-Gigabit - Erstattungsprinzip",
+    "source_url": "https://www.gigabitfoerderung.gov.de/wp-content/uploads/2026/06/260626_BNBest-Gigabit_Aenderungen-2026.pdf",
+    "version": "Stand 26.06.2026",
+    "page": 1,
+    "section": "1.1",
+    "text": "Eine Auszahlung darf grundsätzlich nur für förderfähige Ausgaben angefordert werden, die tatsächlich entstanden und bereits bezahlt worden sind.",
+    "tags": ["erstattungsprinzip", "ausgaben", "bezahlt", "förderfähig"]
+  },
+  {
+    "id": "bnbest_photo_documentation",
+    "title": "BNBest-Gigabit - Fotodokumentation",
+    "source_url": "https://www.gigabitfoerderung.gov.de/wp-content/uploads/2026/06/260626_BNBest-Gigabit_Aenderungen-2026.pdf",
+    "version": "Stand 26.06.2026",
+    "page": 2,
+    "section": "1.2",
+    "text": "Die Maßnahme ist fortlaufend zu dokumentieren. Dazu gehören digitale Fotos mit Zuordnung zu GPS-Koordinaten sowie Darstellungen vor, während und nach den jeweiligen Teilleistungen.",
+    "tags": ["fotodokumentation", "gps", "baufortschritt", "projektakte"]
+  },
+  {
+    "id": "bnbest_verwendungsnachweis_frist",
+    "title": "BNBest-Gigabit - Frist für den Verwendungsnachweis",
+    "source_url": "https://www.gigabitfoerderung.gov.de/wp-content/uploads/2026/06/260626_BNBest-Gigabit_Aenderungen-2026.pdf",
+    "version": "Stand 26.06.2026",
+    "page": 4,
+    "section": "4.1",
+    "text": "Der Verwendungsnachweis ist innerhalb von sechs Monaten nach Erfüllung des Zuwendungszwecks einzureichen, spätestens sechs Monate nach Ende des Bewilligungszeitraums.",
+    "tags": ["verwendungsnachweis", "frist", "sechs monate", "bewilligungszeitraum"]
+  },
+  {
+    "id": "bnbest_project_documentation",
+    "title": "BNBest-Gigabit - Vollständige Projektdokumentation",
+    "source_url": "https://www.gigabitfoerderung.gov.de/wp-content/uploads/2026/06/260626_BNBest-Gigabit_Aenderungen-2026.pdf",
+    "version": "Stand 26.06.2026",
+    "page": 4,
+    "section": "4.2.1",
+    "text": "Zum Verwendungsnachweis gehört eine vollständige Projektdokumentation, unter anderem mit Fotodokumentation, technischen Nachweisen, gegebenenfalls Landesförderbescheiden und Messprotokollen zur Zielerreichung.",
+    "tags": ["projektdokumentation", "messprotokolle", "technische nachweise", "verwendungsnachweis"]
+  },
+  {
+    "id": "call_2026_limits",
+    "title": "Förderaufruf Infrastrukturprojekte 2026",
+    "source_url": "https://www.gigabitfoerderung.gov.de/wp-content/uploads/2026/04/260401_Aufruf-zur-Foerderung-von-Infrastrukturprojekten_2026.pdf",
+    "version": "Stand 01.04.2026",
+    "page": 3,
+    "section": "4 Höhe der Zuwendungen",
+    "text": "Der Förderaufruf 2026 nennt eine maximale Bundesfördersumme von 40 Millionen Euro und grundsätzlich eine Bagatellgrenze von 100.000 Euro.",
+    "tags": ["förderhöhe", "40 millionen", "100.000", "bagatellgrenze"]
+  },
+  {
+    "id": "call_2026_period",
+    "title": "Förderaufruf Infrastrukturprojekte 2026",
+    "source_url": "https://www.gigabitfoerderung.gov.de/wp-content/uploads/2026/04/260401_Aufruf-zur-Foerderung-von-Infrastrukturprojekten_2026.pdf",
+    "version": "Stand 01.04.2026",
+    "page": 1,
+    "section": "Einleitung",
+    "text": "Anträge für Infrastrukturprojekte des Förderaufrufs 2026 können vom 1. April 2026 bis zum 15. September 2026 eingereicht werden.",
+    "tags": ["antragsfrist", "2026", "infrastrukturprojekt", "15 september"]
+  }
+]
