@@ -1,0 +1,12 @@
+[
+  {"question":"Welche Frist gilt für den Verwendungsnachweis?","expected_source":"bnbest_verwendungsnachweis_frist"},
+  {"question":"Was muss die Fotodokumentation enthalten?","expected_source":"bnbest_photo_documentation"},
+  {"question":"Wie lange muss das Markterkundungsverfahren offen sein?","expected_source":"gigabit_branch_dialogue"},
+  {"question":"Welche Unterlagen gehören zur Projektdokumentation?","expected_source":"bnbest_project_documentation"},
+  {"question":"Welche Ausgaben dürfen angefordert werden?","expected_source":"bnbest_reimbursement"},
+  {"question":"Wann werden Fördermittel ausgezahlt?","expected_source":"gigabit_payout_evidence"},
+  {"question":"Wie hoch ist die maximale Bundesfördersumme 2026?","expected_source":"call_2026_limits"},
+  {"question":"Bis wann können Anträge 2026 eingereicht werden?","expected_source":"call_2026_period"},
+  {"question":"Wie muss der Baufortschritt dokumentiert werden?","expected_source":"bnbest_photo_documentation"},
+  {"question":"Welche Bagatellgrenze gilt im Förderaufruf 2026?","expected_source":"call_2026_limits"}
+]
