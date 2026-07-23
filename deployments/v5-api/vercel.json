@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "builds": [{"src": "deployments/v5-api/app.py", "use": "@vercel/python"}],
+  "routes": [{"src": "/(.*)", "dest": "deployments/v5-api/app.py"}],
+  "regions": ["fra1"]
+}
