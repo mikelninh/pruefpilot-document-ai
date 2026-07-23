@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from .agents import PruefPilot
@@ -29,12 +29,17 @@ from .models import (
     UploadResult,
 )
 from .storage import store
+from .v5_cases import answer as v5_answer
+from .v5_cases import evidence as v5_evidence
+from .v5_cases import get_case as v5_get_case
+from .v5_cases import list_cases as v5_list_cases
+from .v5_cases import memo as v5_memo
 
 app = FastAPI(
     title="PrüfPilot Document AI",
-    version="1.0.0",
+    version="5.1.0",
     description=(
-        "Reviewer-facing Document AI prototype for a synthetic public-sector funding workflow. "
+        "Reusable public-sector case engine with three synthetic domains. "
         "Grounded RAG, bounded agents, real PDF intake, evaluation and human approval."
     ),
     docs_url="/api/docs",
@@ -66,6 +71,48 @@ async def request_context(request: Request, call_next):
 @app.get("/", include_in_schema=False)
 def root() -> RedirectResponse:
     return RedirectResponse("/index.html", status_code=307)
+
+
+@app.get("/v5", include_in_schema=False)
+def v5_page() -> FileResponse:
+    return FileResponse(Path(__file__).resolve().parent / "v5.html")
+
+
+@app.get("/api/v5/cases")
+def v5_cases() -> list[dict]:
+    return v5_list_cases()
+
+
+@app.get("/api/v5/cases/{case_id}")
+def v5_case(case_id: str) -> dict:
+    case_data = v5_get_case(case_id)
+    if not case_data:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return case_data
+
+
+@app.post("/api/v5/cases/{case_id}/ask")
+def v5_ask(case_id: str, request: AskRequest) -> dict:
+    result = v5_answer(case_id, request.question)
+    if not result:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return result
+
+
+@app.post("/api/v5/cases/{case_id}/evidence")
+def v5_check_evidence(case_id: str, request: EvidenceRequest) -> dict:
+    result = v5_evidence(case_id, request.claim)
+    if not result:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return result
+
+
+@app.post("/api/v5/cases/{case_id}/memo")
+def v5_review_memo(case_id: str) -> dict:
+    result = v5_memo(case_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return result
 
 
 @app.get("/api/health")
@@ -192,6 +239,7 @@ def product_brief() -> dict:
     }
 
 
+# Vercel serves public/** directly. Local/Docker runs mount the same assets through FastAPI.
 if not os.getenv("VERCEL"):
     public_dir = Path(__file__).resolve().parents[1] / "public"
     app.mount("/", StaticFiles(directory=public_dir, html=True), name="public")
