@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from app.v5_cases import answer, evidence, get_case, list_cases, memo
+from v5_cases import answer, evidence, get_case, list_cases, memo
 
 
 class AskRequest(BaseModel):
