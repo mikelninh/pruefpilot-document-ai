@@ -1,0 +1,27 @@
+{
+  "version": "security-posture/v1",
+  "project": { "id": "pruefpilot", "repository": "mikelninh/pruefpilot", "domain": "document AI and administrative review workflows" },
+  "thesis": "Uploaded documents are untrusted evidence, never instruction authority; tenant, role, policy and release authority remain outside the model.",
+  "controls": [
+    { "id": "authority_outside_model", "status": "implemented", "evidence": [{ "type": "code", "path": "app/agents.py", "claim": "Agent workflows prepare bounded findings and hand-offs rather than granting release authority." }, { "type": "doc", "path": "README.md", "claim": "Authority stays outside the model and autonomous funding/legal decisions are prohibited." }] },
+    { "id": "least_privilege", "status": "implemented", "evidence": [{ "type": "code", "path": "app/production.py", "claim": "Controlled-production paths bind actor/role and fail closed on missing readiness context." }, { "type": "test", "path": "tests/test_production_readiness.py", "claim": "Production readiness and authority boundaries are regression-tested." }] },
+    { "id": "tenant_isolation", "status": "implemented", "evidence": [{ "type": "code", "path": "app/production_postgres_store.py", "claim": "Controlled-production document/case state is tenant-scoped." }, { "type": "test", "path": "tests/test_postgres_store.py", "claim": "Postgres storage behavior is integration-tested." }] },
+    { "id": "human_approval", "status": "implemented", "evidence": [{ "type": "doc", "path": "README.md", "claim": "Prepared outcomes remain behind explicit human/policy release authority." }, { "type": "test", "path": "tests/test_agents.py", "claim": "Bounded workflow behavior and review hand-offs are tested." }] },
+    { "id": "provenance", "status": "implemented", "evidence": [{ "type": "code", "path": "app/document_ai.py", "claim": "PDF intake preserves fingerprints and structured document evidence." }, { "type": "code", "path": "app/retrieval.py", "claim": "Versioned rules and source-linked retrieval remain inspectable." }] },
+    { "id": "protected_data", "status": "implemented", "evidence": [{ "type": "code", "path": "app/security.py", "claim": "Untrusted documents are scanned for prompt injection, credential requests and external-action instructions." }, { "type": "test", "path": "tests/test_document_ai.py", "claim": "Malicious document fixtures are quarantined while benign negative controls remain allowed." }] },
+    { "id": "bounded_execution", "status": "implemented", "evidence": [{ "type": "code", "path": "app/agents.py", "claim": "Agent/tool workflows are bounded and produce visible traces." }, { "type": "test", "path": "tests/test_agents.py", "claim": "Agent workflow boundaries are covered by tests." }] },
+    { "id": "auditability", "status": "implemented", "evidence": [{ "type": "doc", "path": "README.md", "claim": "Review findings, prepared actions and release boundaries remain inspectable." }, { "type": "code", "path": "app/postgres_store.py", "claim": "Durable document/case state supports reproducible review." }] },
+    { "id": "supply_chain", "status": "partial", "evidence": [{ "type": "doc", "path": "README.md", "claim": "External model/provider and deployment-specific security acceptance remain explicitly unproven." }] },
+    { "id": "adversarial_evals", "status": "implemented", "evidence": [{ "type": "test", "path": "tests/test_document_ai.py", "claim": "Security classification is regression-tested across the 12-case document benchmark." }, { "type": "report", "path": "data/benchmark_cases.json", "claim": "The benchmark contains ten benign controls and two explicit prompt-injection/exfiltration documents." }] },
+    { "id": "production_monitoring", "status": "partial", "evidence": [{ "type": "doc", "path": "README.md", "claim": "Controlled-production readiness is fail-closed, but real operating SLO/security telemetry remains external evidence." }] }
+  ],
+  "adversarial": { "taxonomy": "PrüfPilot untrusted-document security benchmark", "cases": 12, "passed": 12, "criticalEscapes": 0, "liveModel": false },
+  "claims": { "productionSecure": false, "promptInjectionSolved": false, "certified": false },
+  "residualRisks": [
+    "Regex/document scanning is defense-in-depth telemetry, not proof that indirect prompt injection is solved.",
+    "The current 12-case security benchmark is small and synthetic.",
+    "A stronger next proof is live-model replay with malicious PDFs, poisoned retrieval context and tool-effect attempts.",
+    "Target DMS/Fachverfahren integration, deployment-specific privacy/security acceptance and measured operating SLOs remain unproven.",
+    "No autonomous legal, funding or benefit decision is authorized by this posture."
+  ]
+}
