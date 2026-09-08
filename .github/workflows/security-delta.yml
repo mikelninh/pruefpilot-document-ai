@@ -1,0 +1,55 @@
+name: security-delta-v1
+
+on:
+  pull_request:
+    paths:
+      - 'app/document_ai.py'
+      - 'security/**'
+      - 'tests/test_security_delta.py'
+      - 'requirements.txt'
+      - '.github/workflows/security-delta.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'app/document_ai.py'
+      - 'security/**'
+      - 'tests/test_security_delta.py'
+      - 'requirements.txt'
+      - '.github/workflows/security-delta.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  delta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: pip install -r requirements.txt pytest
+      - name: Run controlled mutation delta proof
+        run: |
+          pytest -q tests/test_security_delta.py
+          python security/security_delta.py
+      - name: Assert evidence contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path('security/security-delta-proof.json').read_text())
+          assert r['version'] == 'security-delta-target-proof/v1'
+          s = r['summary']
+          assert s['before']['impactEscapes'] == s['attackCases']
+          assert s['after']['impactEscapes'] == 0
+          assert s['holdout']['contained'] == s['holdout']['total']
+          assert s['benign']['retentionRate'] == 1
+          assert r['mutation']['historicalVulnerabilityClaimed'] is False
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pruefpilot-security-delta-v1
+          path: security/security-delta-proof.json
